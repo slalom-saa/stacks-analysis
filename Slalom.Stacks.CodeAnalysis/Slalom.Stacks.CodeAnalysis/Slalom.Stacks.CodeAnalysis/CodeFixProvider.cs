@@ -12,6 +12,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Rename;
 using Microsoft.CodeAnalysis.Text;
+using SF = Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Slalom.Stacks.CodeAnalysis
 {
@@ -20,7 +21,7 @@ namespace Slalom.Stacks.CodeAnalysis
     {
         public sealed override ImmutableArray<string> FixableDiagnosticIds
         {
-            get { return ImmutableArray.Create(StacksAnalyzer.CommandsEndWithCommand.Id, StacksAnalyzer.EventsEndWithEvents.Id, StacksAnalyzer.CommandPropertiesAreImmutable.Id); }
+            get { return ImmutableArray.Create(StacksAnalyzer.CommandsEndWithCommand.Id, StacksAnalyzer.EventsEndWithEvents.Id, StacksAnalyzer.MessagePropertiesAreImmutable.Id); }
         }
 
         public sealed override FixAllProvider GetFixAllProvider()
@@ -67,20 +68,56 @@ namespace Slalom.Stacks.CodeAnalysis
                             equivalenceKey: "Append 'Event'"),
                         diagnostic);
                 }
-                //else if (diagnostic.Id == StacksAnalyzer.CommandPropertiesAreImmutable.Id)
-                //{
-                //    var diagnosticSpan = diagnostic.Location.SourceSpan;
+                else if (diagnostic.Id == StacksAnalyzer.MessagePropertiesAreImmutable.Id)
+                {
+                    var diagnosticSpan = diagnostic.Location.SourceSpan;
 
-                //    var property = root.FindNode(diagnosticSpan) as PropertyDeclarationSyntax;
+                    var property = root.FindNode(diagnosticSpan) as PropertyDeclarationSyntax;
 
-                //    // Register a code action that will invoke the fix.
-                //    context.RegisterCodeFix(
-                //        CodeAction.Create(
-                //            title: "Remove setter",
-                //            createChangedDocument: c => this.ReplacePropertyModifierAsync(context.Document, property, SyntaxKind.PrivateKeyword, c),
-                //            equivalenceKey: "Remove setter"),
-                //        diagnostic);
-                //}
+                    // Register a code action that will invoke the fix.
+                    context.RegisterCodeFix(
+                        CodeAction.Create(
+                            title: "Remove setter",
+                            createChangedDocument: async c =>
+                            {
+                                var previousWhiteSpacesToken = SF.Token(property.GetLeadingTrivia(), SyntaxKind.StringLiteralToken, SyntaxTriviaList.Empty);
+
+                                var target = property.WithModifiers(SF.TokenList(previousWhiteSpacesToken, SF.Token(SyntaxKind.PublicKeyword)))
+                                                     .WithAccessorList(SF.AccessorList(SF.List(new[] {
+                                                         SF.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                                                         .WithSemicolonToken(SF.Token(SyntaxKind.SemicolonToken))
+                                                     })));
+
+
+                                var updated = await context.Document.GetSyntaxRootAsync(c);
+                                return context.Document.WithSyntaxRoot(updated.ReplaceNode(property, new[] { target }));
+                            },
+                            equivalenceKey: "Remove setter"),
+                        diagnostic);
+
+                    context.RegisterCodeFix(
+                        CodeAction.Create(
+                            title: "Make setter private",
+                            createChangedDocument: async c =>
+                            {
+                                var previousWhiteSpacesToken = SF.Token(property.GetLeadingTrivia(), SyntaxKind.StringLiteralToken, SyntaxTriviaList.Empty);
+
+                                var target = property.WithModifiers(SF.TokenList(previousWhiteSpacesToken, SF.Token(SyntaxKind.PublicKeyword)))
+                                                     .WithAccessorList(SF.AccessorList(SF.List(new[] {
+                                                         SF.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                                                         .WithSemicolonToken(SF.Token(SyntaxKind.SemicolonToken)),
+                                                         SF.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                                                         .WithModifiers(SF.TokenList(SF.Token(SyntaxKind.PrivateKeyword)))
+                                                         .WithSemicolonToken(SF.Token(SyntaxKind.SemicolonToken))
+                                                     })));
+
+
+                                var updated = await context.Document.GetSyntaxRootAsync(c);
+                                return context.Document.WithSyntaxRoot(updated.ReplaceNode(property, new[] { target }));
+                            },
+                            equivalenceKey: "Make setter private"),
+                        diagnostic);
+                }
             }
             catch
             {
@@ -106,7 +143,7 @@ namespace Slalom.Stacks.CodeAnalysis
         //    return await ReplacePropertyInDocumentAsync(document, property, newProperty, cancellationToken);
         //}
 
-        //private static async Task<Document> ReplacePropertyInDocumentAsync(Document document, PropertyDeclarationSyntax property, PropertyDeclarationSyntax newProperty, CancellationToken cancellationToken)
+        //private static async Task<Document> avasdf(Document document, PropertyDeclarationSyntax property, PropertyDeclarationSyntax newProperty, CancellationToken cancellationToken)
         //{
         //    var root = await document.GetSyntaxRootAsync(cancellationToken);
         //    var newRoot = root.ReplaceNode(property, new[] { newProperty });

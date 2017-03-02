@@ -15,67 +15,91 @@ namespace Slalom.Stacks.CodeAnalysis
         internal static readonly DiagnosticDescriptor EventsEndWithEvents = new DiagnosticDescriptor("SS002", "The type name does not end with 'Event'", "The type name '{0}' does not end in 'Event'", "Naming", DiagnosticSeverity.Warning,
           true, "Command names should end in 'Event'");
 
-        internal static readonly DiagnosticDescriptor CommandPropertiesAreImmutable = new DiagnosticDescriptor("SS003", "The property is not immutable",
-            "The property '{0}' cannot be mutable", "Messaging", DiagnosticSeverity.Error, true, "Command properties cannot be mutable");
+        internal static readonly DiagnosticDescriptor MessagePropertiesAreImmutable = new DiagnosticDescriptor("SS101", "The property is not immutable",
+            "The property '{0}' should not be mutable", "Messaging", DiagnosticSeverity.Error, true, "Message properties should not be mutable");
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(CommandsEndWithCommand, EventsEndWithEvents, CommandPropertiesAreImmutable);
+        internal static readonly DiagnosticDescriptor MessagesCannotHaveFields = new DiagnosticDescriptor("SS102", "The message contains fields",
+            "The message type '{0}' should not have fields", "Messaging", DiagnosticSeverity.Error, true, "Messages should not have fields");
+
+        internal static readonly DiagnosticDescriptor CommandShouldHaveRules = new DiagnosticDescriptor("SS301", "The command does not have any rules",
+           "The command '{0}' should have rulees", "Rules", DiagnosticSeverity.Error, true, "Commands should have rules");
+
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(CommandsEndWithCommand, EventsEndWithEvents, MessagePropertiesAreImmutable, MessagesCannotHaveFields, CommandShouldHaveRules);
 
         public override void Initialize(AnalysisContext context)
         {
-            context.RegisterSymbolAction(AnalyzeClass, SymbolKind.NamedType);
+
             context.RegisterSymbolAction(AnalyzeProperty, SymbolKind.Property);
-
-            context.RegisterCompilationStartAction((compilation) =>
-            {
-                var symbols = compilation.Compilation.GetSymbolsWithName(e => true);
-
-                foreach (var symbol in symbols)
-                {
-                }
-            });
+            context.RegisterSymbolAction(AnalyzeProperty, SymbolKind.Field);
+            context.RegisterSymbolAction(AnalyzeClass, SymbolKind.NamedType);
         }
 
         private void AnalyzeProperty(SymbolAnalysisContext context)
         {
-            try
+            if (context.Symbol is IPropertySymbol)
             {
                 var target = (IPropertySymbol)context.Symbol;
-                if (target.SetMethod?.DeclaredAccessibility == Accessibility.Public)
+                if (target.ContainingType.AllInterfaces.Any(e => e.Name == "IMessage") && target.SetMethod?.DeclaredAccessibility == Accessibility.Public)
                 {
-                    var diagnostic = Diagnostic.Create(CommandPropertiesAreImmutable, target.Locations[0], target.Name);
+                    var diagnostic = Diagnostic.Create(MessagePropertiesAreImmutable, target.Locations[0], target.Name);
 
                     context.ReportDiagnostic(diagnostic);
                 }
             }
-            catch
+            else if (context.Symbol is IFieldSymbol)
             {
+                var target = (IFieldSymbol)context.Symbol;
+                if (target.ContainingType.AllInterfaces.Any(e => e.Name == "IMessage"))
+                {
+                    var diagnostic = Diagnostic.Create(MessagesCannotHaveFields, target.Locations[0], target.ContainingType.Name);
+
+                    context.ReportDiagnostic(diagnostic);
+                }
             }
         }
 
-        private static void AnalyzeClass(SymbolAnalysisContext context)
+        private void AnalyzeClass(SymbolAnalysisContext context)
         {
-            try
-            {
-                var namedTypeSymbol = (INamedTypeSymbol)context.Symbol;
+            //var xxx = compilation.Compilation.GetSymbolsWithName(e => true);
 
-                // Find just those named type symbols with names containing lowercase letters.
-                if (namedTypeSymbol.BaseType?.Name == "Command" && !namedTypeSymbol.Name.EndsWith("Command"))
+            var target = (INamedTypeSymbol)context.Symbol;
+
+            // Find just those named type symbols with names containing lowercase letters.
+            if (target.BaseType?.Name == "Command")
+            {
+                if (!target.Name.EndsWith("Command"))
                 {
                     // For all such symbols, produce a diagnostic.
-                    var diagnostic = Diagnostic.Create(CommandsEndWithCommand, namedTypeSymbol.Locations[0], namedTypeSymbol.Name);
+                    var diagnostic = Diagnostic.Create(CommandsEndWithCommand, target.Locations[0], target.Name);
 
                     context.ReportDiagnostic(diagnostic);
                 }
-                else if (namedTypeSymbol.BaseType?.Name == "Event" && !namedTypeSymbol.Name.EndsWith("Event"))
-                {
-                    // For all such symbols, produce a diagnostic.
-                    var diagnostic = Diagnostic.Create(EventsEndWithEvents, namedTypeSymbol.Locations[0], namedTypeSymbol.Name);
 
-                    context.ReportDiagnostic(diagnostic);
+                if (target.GetMembers().Any(e => e.Kind == SymbolKind.Property))
+                {
+                    var types = context.Compilation.GetSymbolsWithName(e => true).OfType<INamedTypeSymbol>();
+                    bool found = false;
+                    foreach (var item in types)
+                    {
+                        if (item.AllInterfaces.Any(e => e.Name == "IValidate" && e.TypeParameters.Any(x => x.Name == target.Name)))
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found)
+                    {
+                        var diagnostic = Diagnostic.Create(CommandShouldHaveRules, target.Locations[0], target.Name);
+                        context.ReportDiagnostic(diagnostic);
+                    }
                 }
             }
-            catch
+            else if (target.BaseType?.Name == "Event" && !target.Name.EndsWith("Event"))
             {
+                // For all such symbols, produce a diagnostic.
+                var diagnostic = Diagnostic.Create(EventsEndWithEvents, target.Locations[0], target.Name);
+
+                context.ReportDiagnostic(diagnostic);
             }
         }
     }
