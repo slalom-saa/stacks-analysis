@@ -9,10 +9,10 @@ namespace Slalom.Stacks.CodeAnalysis
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class StacksAnalyzer : DiagnosticAnalyzer
     {
-        internal static readonly DiagnosticDescriptor CommandsEndWithCommand = new DiagnosticDescriptor("SS001", "The type name does not end with 'Command'", 
+        internal static readonly DiagnosticDescriptor CommandsEndWithCommand = new DiagnosticDescriptor("SS001", "The type name does not end with 'Command'",
             "The type name '{0}' should end in 'Command'", "Naming", DiagnosticSeverity.Warning, true, "Command names should end in 'Command'");
 
-        internal static readonly DiagnosticDescriptor EventsEndWithEvents = new DiagnosticDescriptor("SS002", "The type name does not end with 'Event'", 
+        internal static readonly DiagnosticDescriptor EventsEndWithEvents = new DiagnosticDescriptor("SS002", "The type name does not end with 'Event'",
             "The type name '{0}' should end in 'Event'", "Naming", DiagnosticSeverity.Warning, true, "Command names should end in 'Event'");
 
         internal static readonly DiagnosticDescriptor MessagePropertiesAreImmutable = new DiagnosticDescriptor("SS101", "The property is not immutable",
@@ -75,23 +75,20 @@ namespace Slalom.Stacks.CodeAnalysis
                     context.ReportDiagnostic(diagnostic);
                 }
 
-                if (target.GetMembers().Any(e => e.Kind == SymbolKind.Property))
+                var types = context.Compilation.GetSymbolsWithName(e => true).OfType<INamedTypeSymbol>().Where(e => e.AllInterfaces.Any(x => x.Name == "IValidate"));
+                bool found = false;
+                foreach (var item in types)
                 {
-                    var types = context.Compilation.GetSymbolsWithName(e => true).OfType<INamedTypeSymbol>().Where(e => e.AllInterfaces.Any(x => x.Name == "IValidate"));
-                    bool found = false;
-                    foreach (var item in types)
+                    if (item.BaseType?.TypeArguments.Any(x => x.Name == target.Name) ?? false)
                     {
-                        if (item.BaseType?.TypeArguments.Any(x => x.Name == target.Name) ?? false)
-                        {
-                            found = true;
-                            break;
-                        }
+                        found = true;
+                        break;
                     }
-                    if (!found)
-                    {
-                        var diagnostic = Diagnostic.Create(CommandShouldHaveRules, target.Locations[0], target.Name);
-                        context.ReportDiagnostic(diagnostic);
-                    }
+                }
+                if (!found)
+                {
+                    var diagnostic = Diagnostic.Create(CommandShouldHaveRules, target.Locations[0], target.Name);
+                    context.ReportDiagnostic(diagnostic);
                 }
             }
             else if (target.BaseType?.Name == "Event" && !target.Name.EndsWith("Event"))

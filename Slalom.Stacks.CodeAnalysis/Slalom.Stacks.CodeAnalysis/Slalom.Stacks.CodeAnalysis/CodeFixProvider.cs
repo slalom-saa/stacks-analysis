@@ -140,16 +140,27 @@ namespace Slalom.Stacks.CodeAnalysis
                             NamespaceDeclarationSyntax namespaceDeclarationSyntax = null;
                             if (!SyntaxNodeHelper.TryGetParentSyntax(property, out namespaceDeclarationSyntax))
                             {
-                               
+
                             }
 
                             var ns = SF.NamespaceDeclaration(namespaceDeclarationSyntax.Name);
 
-                            var cl = SF.ClassDeclaration("rule")
+                            var comp = await context.Document.Project.GetCompilationAsync();
+                            string name = property.Identifier.Value + "_rule";
+                            //if (comp.GetSymbolsWithName(x => x == name) != null)
+                            //{
+                            //    int i = 1;
+                            //    var current = name + i;
+                            //    while (comp.GetSymbolsWithName(x => x == current) != null)
+                            //    {
+                            //        i++;
+                            //    }
+                            //}
+
+                            var cl = SF.ClassDeclaration(name)
                                        .WithModifiers(SF.TokenList(SF.Token(SyntaxKind.PublicKeyword)))
                                        .AddBaseListTypes(SF.SimpleBaseType(SF.ParseTypeName("BusinessRule<" + property.Identifier.ValueText + ">")));
                             ns = ns.AddMembers(cl);
-
                             cu = cu.AddMembers(ns);
 
                             SyntaxNode formattedNode = Formatter.Format(cu, context.Document.Project.Solution.Workspace);
@@ -159,11 +170,7 @@ namespace Slalom.Stacks.CodeAnalysis
                                 formattedNode.WriteTo(writer);
                             }
 
-                            await Task.Delay(50);
-
-                            var x = context.Document.Project.AddDocument("rule.cs", sb.ToString());
-
-                            return x;
+                            return context.Document.Project.AddDocument(name + ".cs", sb.ToString(), namespaceDeclarationSyntax.Name.ToString().Split('.').Skip(1).Concat(new[] { "Rules" }));
                         },
                         equivalenceKey: "Create business rule"),
                     diagnostic);
