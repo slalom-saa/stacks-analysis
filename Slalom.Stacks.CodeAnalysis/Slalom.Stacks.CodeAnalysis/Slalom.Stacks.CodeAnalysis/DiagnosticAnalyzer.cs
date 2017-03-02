@@ -9,20 +9,20 @@ namespace Slalom.Stacks.CodeAnalysis
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class StacksAnalyzer : DiagnosticAnalyzer
     {
-        internal static readonly DiagnosticDescriptor CommandsEndWithCommand = new DiagnosticDescriptor("SS001", "The type name does not end with 'Command'", "The type name '{0}' does not end in 'Command'", "Naming", DiagnosticSeverity.Warning,
-            true, "Command names should end in 'Command'");
+        internal static readonly DiagnosticDescriptor CommandsEndWithCommand = new DiagnosticDescriptor("SS001", "The type name does not end with 'Command'", 
+            "The type name '{0}' should end in 'Command'", "Naming", DiagnosticSeverity.Warning, true, "Command names should end in 'Command'");
 
-        internal static readonly DiagnosticDescriptor EventsEndWithEvents = new DiagnosticDescriptor("SS002", "The type name does not end with 'Event'", "The type name '{0}' does not end in 'Event'", "Naming", DiagnosticSeverity.Warning,
-          true, "Command names should end in 'Event'");
+        internal static readonly DiagnosticDescriptor EventsEndWithEvents = new DiagnosticDescriptor("SS002", "The type name does not end with 'Event'", 
+            "The type name '{0}' should end in 'Event'", "Naming", DiagnosticSeverity.Warning, true, "Command names should end in 'Event'");
 
         internal static readonly DiagnosticDescriptor MessagePropertiesAreImmutable = new DiagnosticDescriptor("SS101", "The property is not immutable",
-            "The property '{0}' should not be mutable", "Messaging", DiagnosticSeverity.Error, true, "Message properties should not be mutable");
+            "The property '{0}' cannot be mutable.", "Messaging", DiagnosticSeverity.Error, true, "Message properties cannot be mutable");
 
         internal static readonly DiagnosticDescriptor MessagesCannotHaveFields = new DiagnosticDescriptor("SS102", "The message contains fields",
-            "The message type '{0}' should not have fields", "Messaging", DiagnosticSeverity.Error, true, "Messages should not have fields");
+            "The message type '{0}' cannot have fields.", "Messaging", DiagnosticSeverity.Error, true, "Messages cannot have fields");
 
         internal static readonly DiagnosticDescriptor CommandShouldHaveRules = new DiagnosticDescriptor("SS301", "The command does not have any rules",
-           "The command '{0}' should have rulees", "Rules", DiagnosticSeverity.Error, true, "Commands should have rules");
+           "The command '{0}' should have rules.", "Rules", DiagnosticSeverity.Warning, true, "Commands should have rules", "http://slalom.com");
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(CommandsEndWithCommand, EventsEndWithEvents, MessagePropertiesAreImmutable, MessagesCannotHaveFields, CommandShouldHaveRules);
 
@@ -77,17 +77,17 @@ namespace Slalom.Stacks.CodeAnalysis
 
                 if (target.GetMembers().Any(e => e.Kind == SymbolKind.Property))
                 {
-                    var types = context.Compilation.GetSymbolsWithName(e => true).OfType<INamedTypeSymbol>();
+                    var types = context.Compilation.GetSymbolsWithName(e => true).OfType<INamedTypeSymbol>().Where(e => e.AllInterfaces.Any(x => x.Name == "IValidate"));
                     bool found = false;
                     foreach (var item in types)
                     {
-                        if (item.AllInterfaces.Any(e => e.Name == "IValidate" && e.TypeParameters.Any(x => x.Name == target.Name)))
+                        if (item.BaseType?.TypeArguments.Any(x => x.Name == target.Name) ?? false)
                         {
                             found = true;
                             break;
                         }
                     }
-                    if (found)
+                    if (!found)
                     {
                         var diagnostic = Diagnostic.Create(CommandShouldHaveRules, target.Locations[0], target.Name);
                         context.ReportDiagnostic(diagnostic);
