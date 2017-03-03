@@ -28,7 +28,6 @@ namespace Slalom.Stacks.CodeAnalysis
 
         public override void Initialize(AnalysisContext context)
         {
-
             context.RegisterSymbolAction(AnalyzeProperty, SymbolKind.Property);
             context.RegisterSymbolAction(AnalyzeProperty, SymbolKind.Field);
             context.RegisterSymbolAction(AnalyzeClass, SymbolKind.NamedType);
