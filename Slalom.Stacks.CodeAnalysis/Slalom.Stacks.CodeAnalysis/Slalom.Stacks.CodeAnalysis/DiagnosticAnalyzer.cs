@@ -21,10 +21,10 @@ namespace Slalom.Stacks.CodeAnalysis
         internal static readonly DiagnosticDescriptor MessagesCannotHaveFields = new DiagnosticDescriptor("SS102", "The message contains fields",
             "The message type '{0}' cannot have fields.", "Messaging", DiagnosticSeverity.Error, true, "Messages cannot have fields");
 
-        internal static readonly DiagnosticDescriptor CommandShouldHaveRules = new DiagnosticDescriptor("SS301", "The command does not have any rules",
-           "The command '{0}' should have rules.", "Rules", DiagnosticSeverity.Warning, true, "Commands should have rules", "http://slalom.com");
+        internal static readonly DiagnosticDescriptor UseCaseShouldHaveRules = new DiagnosticDescriptor("SS301", "The use case does not have any rules",
+           "The use case '{0}' should have rules.", "Rules", DiagnosticSeverity.Warning, true, "Use cases should have rules", "http://slalom.com");
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(CommandsEndWithCommand, EventsEndWithEvents, MessagePropertiesAreImmutable, MessagesCannotHaveFields, CommandShouldHaveRules);
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(CommandsEndWithCommand, EventsEndWithEvents, MessagePropertiesAreImmutable, MessagesCannotHaveFields, UseCaseShouldHaveRules);
 
         public override void Initialize(AnalysisContext context)
         {
@@ -74,21 +74,21 @@ namespace Slalom.Stacks.CodeAnalysis
                     context.ReportDiagnostic(diagnostic);
                 }
 
-                var types = context.Compilation.GetSymbolsWithName(e => true).OfType<INamedTypeSymbol>().Where(e => e.AllInterfaces.Any(x => x.Name == "IValidate"));
-                bool found = false;
-                foreach (var item in types)
-                {
-                    if (item.BaseType?.TypeArguments.Any(x => x.Name == target.Name) ?? false)
-                    {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)
-                {
-                    var diagnostic = Diagnostic.Create(CommandShouldHaveRules, target.Locations[0], target.Name);
-                    context.ReportDiagnostic(diagnostic);
-                }
+                //var types = context.Compilation.GetSymbolsWithName(e => true).OfType<INamedTypeSymbol>().Where(e => e.AllInterfaces.Any(x => x.Name == "IValidate"));
+                //bool found = false;
+                //foreach (var item in types)
+                //{
+                //    if (item.BaseType?.TypeArguments.Any(x => x.Name == target.Name) ?? false)
+                //    {
+                //        found = true;
+                //        break;
+                //    }
+                //}
+                //if (!found)
+                //{
+                //    var diagnostic = Diagnostic.Create(CommandShouldHaveRules, target.Locations[0], target.Name);
+                //    context.ReportDiagnostic(diagnostic);
+                //}
             }
             else if (target.BaseType?.Name == "Event" && !target.Name.EndsWith("Event"))
             {
@@ -96,6 +96,19 @@ namespace Slalom.Stacks.CodeAnalysis
                 var diagnostic = Diagnostic.Create(EventsEndWithEvents, target.Locations[0], target.Name);
 
                 context.ReportDiagnostic(diagnostic);
+            }
+            else if (target.BaseType?.Name == "UseCase")
+            {
+                var command = target.BaseType.TypeArguments[0];
+                var rules = context.Compilation.GetSymbolsWithName(e => true).OfType<INamedTypeSymbol>()
+                    .Where(e => e.AllInterfaces.Any(x => x.Name == "IValidate"));
+
+                var business = rules.Where(e => e.TypeArguments.FirstOrDefault()?.Name == command.Name);
+                if (!business.Any())
+                {
+                    var diagnostic = Diagnostic.Create(UseCaseShouldHaveRules, target.Locations[0], target.Name);
+                    context.ReportDiagnostic(diagnostic);
+                }
             }
         }
     }

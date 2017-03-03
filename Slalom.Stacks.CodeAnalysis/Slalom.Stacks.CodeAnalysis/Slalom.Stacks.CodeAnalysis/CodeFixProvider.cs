@@ -24,7 +24,7 @@ namespace Slalom.Stacks.CodeAnalysis
     {
         public sealed override ImmutableArray<string> FixableDiagnosticIds
         {
-            get { return ImmutableArray.Create(StacksAnalyzer.CommandsEndWithCommand.Id, StacksAnalyzer.EventsEndWithEvents.Id, StacksAnalyzer.MessagePropertiesAreImmutable.Id, StacksAnalyzer.CommandShouldHaveRules.Id); }
+            get { return ImmutableArray.Create(StacksAnalyzer.CommandsEndWithCommand.Id, StacksAnalyzer.EventsEndWithEvents.Id, StacksAnalyzer.MessagePropertiesAreImmutable.Id, StacksAnalyzer.UseCaseShouldHaveRules.Id); }
         }
 
         public sealed override FixAllProvider GetFixAllProvider()
@@ -119,7 +119,7 @@ namespace Slalom.Stacks.CodeAnalysis
                         equivalenceKey: "Make setter private"),
                     diagnostic);
             }
-            else if (diagnostic.Id == StacksAnalyzer.CommandShouldHaveRules.Id)
+            else if (diagnostic.Id == StacksAnalyzer.UseCaseShouldHaveRules.Id)
             {
                 var diagnosticSpan = diagnostic.Location.SourceSpan;
 
@@ -147,6 +147,7 @@ namespace Slalom.Stacks.CodeAnalysis
 
                             var comp = await context.Document.Project.GetCompilationAsync();
                             string name = property.Identifier.Value + "_rule";
+                            var command = ((IdentifierNameSyntax)((GenericNameSyntax)property.BaseList.Types[0].Type).TypeArgumentList.Arguments[0]).Identifier.ValueText;
                             //if (comp.GetSymbolsWithName(x => x == name) != null)
                             //{
                             //    int i = 1;
@@ -159,7 +160,7 @@ namespace Slalom.Stacks.CodeAnalysis
 
                             var cl = SF.ClassDeclaration(name)
                                        .WithModifiers(SF.TokenList(SF.Token(SyntaxKind.PublicKeyword)))
-                                       .AddBaseListTypes(SF.SimpleBaseType(SF.ParseTypeName("BusinessRule<" + property.Identifier.ValueText + ">")));
+                                       .AddBaseListTypes(SF.SimpleBaseType(SF.ParseTypeName("BusinessRule<" + command + ">")));
                             ns = ns.AddMembers(cl);
                             cu = cu.AddMembers(ns);
 
