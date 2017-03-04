@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="Slalom.Stacks.CodeAnalysis..c65aef2d-e46f-441f-ae71-406c370b7413" Version="1.1" Language="en-US" Publisher="George Olson"/>
+    <Identity Id="Slalom.Stacks.CodeAnalysis..c65aef2d-e46f-441f-ae71-406c370b7413" Version="1.2" Language="en-US" Publisher="George Olson"/>
     <DisplayName>Slalom.Stacks.CodeAnalysis</DisplayName>
     <Description xml:space="preserve">This is a sample diagnostic extension for the .NET Compiler Platform ("Roslyn").</Description>
   </Metadata>

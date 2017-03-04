@@ -19,8 +19,8 @@ using SF = Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Slalom.Stacks.CodeAnalysis
 {
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(SlalomStacksCodeAnalysisCodeFixProvider)), Shared]
-    public class SlalomStacksCodeAnalysisCodeFixProvider : CodeFixProvider
+    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(StacksCodeFixProvider)), Shared]
+    public class StacksCodeFixProvider : CodeFixProvider
     {
         public sealed override ImmutableArray<string> FixableDiagnosticIds
         {

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -6,22 +7,42 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Slalom.Stacks.CodeAnalysis
 {
+    public static class Extensions
+    {
+        public static IEnumerable<INamedTypeSymbol> AllBases(this INamedTypeSymbol instance)
+        {
+            yield return instance.BaseType;
+            if (instance.BaseType.Name != "Object")
+            {
+                foreach (var parent in instance.AllBases())
+                {
+                    yield return parent;
+                }
+            }
+        }
+
+        public static bool HasBase(this INamedTypeSymbol instance, string name)
+        {
+            return instance.AllBases().Any(e => e.Name == name);
+        }
+    }
+
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class StacksAnalyzer : DiagnosticAnalyzer
     {
-        internal static readonly DiagnosticDescriptor CommandsEndWithCommand = new DiagnosticDescriptor("SS001", "The type name does not end with 'Command'",
+        public static readonly DiagnosticDescriptor CommandsEndWithCommand = new DiagnosticDescriptor("SS001", "The type name does not end with 'Command'",
             "The type name '{0}' should end in 'Command'", "Naming", DiagnosticSeverity.Warning, true, "Command names should end in 'Command'");
 
-        internal static readonly DiagnosticDescriptor EventsEndWithEvents = new DiagnosticDescriptor("SS002", "The type name does not end with 'Event'",
+        public static readonly DiagnosticDescriptor EventsEndWithEvents = new DiagnosticDescriptor("SS002", "The type name does not end with 'Event'",
             "The type name '{0}' should end in 'Event'", "Naming", DiagnosticSeverity.Warning, true, "Command names should end in 'Event'");
 
-        internal static readonly DiagnosticDescriptor MessagePropertiesAreImmutable = new DiagnosticDescriptor("SS101", "The property is not immutable",
+        public static readonly DiagnosticDescriptor MessagePropertiesAreImmutable = new DiagnosticDescriptor("SS101", "The property is not immutable",
             "The property '{0}' cannot be mutable.", "Messaging", DiagnosticSeverity.Error, true, "Message properties cannot be mutable");
 
-        internal static readonly DiagnosticDescriptor MessagesCannotHaveFields = new DiagnosticDescriptor("SS102", "The message contains fields",
+        public static readonly DiagnosticDescriptor MessagesCannotHaveFields = new DiagnosticDescriptor("SS102", "The message contains fields",
             "The message type '{0}' cannot have fields.", "Messaging", DiagnosticSeverity.Error, true, "Messages cannot have fields");
 
-        internal static readonly DiagnosticDescriptor UseCaseShouldHaveRules = new DiagnosticDescriptor("SS301", "The use case does not have any rules",
+        public static readonly DiagnosticDescriptor UseCaseShouldHaveRules = new DiagnosticDescriptor("SS301", "The use case does not have any rules",
            "The use case '{0}' should have rules.", "Rules", DiagnosticSeverity.Warning, true, "Use cases should have rules", "http://slalom.com");
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(CommandsEndWithCommand, EventsEndWithEvents, MessagePropertiesAreImmutable, MessagesCannotHaveFields, UseCaseShouldHaveRules);
@@ -64,12 +85,12 @@ namespace Slalom.Stacks.CodeAnalysis
             var target = (INamedTypeSymbol)context.Symbol;
 
             // Find just those named type symbols with names containing lowercase letters.
-            if (target.BaseType == null)
+            if (target.BaseType.Name == "Object")
             {
                 var types = context.Compilation.GetSymbolsWithName(e => true).OfType<INamedTypeSymbol>().Where(e => e.BaseType?.TypeArguments.FirstOrDefault()?.Name == target.Name);
                 foreach (var item in types)
                 {
-                    if (item.AllInterfaces.Any(e => e.Name == "UseCase"))
+                    if (item.BaseType.Name == "UseCase")
                     {
                         var diagnostic = Diagnostic.Create(CommandsEndWithCommand, target.Locations[0], target.Name);
                         context.ReportDiagnostic(diagnostic);
@@ -113,7 +134,7 @@ namespace Slalom.Stacks.CodeAnalysis
             {
                 var command = target.BaseType.TypeArguments[0];
                 var rules = context.Compilation.GetSymbolsWithName(e => true).OfType<INamedTypeSymbol>()
-                    .Where(e => e.AllInterfaces.Any(x => x.Name == "IValidate"));
+                    .Where(e => e.BaseType.Name == "BusinessRule");
 
                 var business = rules.Where(e => e.BaseType?.TypeArguments.FirstOrDefault()?.Name == command.Name);
                 if (!business.Any())
