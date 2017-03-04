@@ -64,15 +64,27 @@ namespace Slalom.Stacks.CodeAnalysis
             var target = (INamedTypeSymbol)context.Symbol;
 
             // Find just those named type symbols with names containing lowercase letters.
-            if (target.BaseType?.Name == "Command")
+            if (target.BaseType == null)
             {
-                if (!target.Name.EndsWith("Command"))
+                var types = context.Compilation.GetSymbolsWithName(e => true).OfType<INamedTypeSymbol>().Where(e => e.BaseType?.TypeArguments.FirstOrDefault()?.Name == target.Name);
+                foreach (var item in types)
                 {
-                    // For all such symbols, produce a diagnostic.
-                    var diagnostic = Diagnostic.Create(CommandsEndWithCommand, target.Locations[0], target.Name);
-
-                    context.ReportDiagnostic(diagnostic);
+                    if (item.AllInterfaces.Any(e => e.Name == "UseCase"))
+                    {
+                        var diagnostic = Diagnostic.Create(CommandsEndWithCommand, target.Locations[0], target.Name);
+                        context.ReportDiagnostic(diagnostic);
+                    }
                 }
+
+
+
+                //if (!target.Name.EndsWith("Command"))
+                //{
+                //    // For all such symbols, produce a diagnostic.
+                //    var diagnostic = Diagnostic.Create(CommandsEndWithCommand, target.Locations[0], target.Name);
+
+                //    context.ReportDiagnostic(diagnostic);
+                //}
 
                 //var types = context.Compilation.GetSymbolsWithName(e => true).OfType<INamedTypeSymbol>().Where(e => e.AllInterfaces.Any(x => x.Name == "IValidate"));
                 //bool found = false;
@@ -103,7 +115,7 @@ namespace Slalom.Stacks.CodeAnalysis
                 var rules = context.Compilation.GetSymbolsWithName(e => true).OfType<INamedTypeSymbol>()
                     .Where(e => e.AllInterfaces.Any(x => x.Name == "IValidate"));
 
-                var business = rules.Where(e => e.TypeArguments.FirstOrDefault()?.Name == command.Name);
+                var business = rules.Where(e => e.BaseType?.TypeArguments.FirstOrDefault()?.Name == command.Name);
                 if (!business.Any())
                 {
                     var diagnostic = Diagnostic.Create(UseCaseShouldHaveRules, target.Locations[0], target.Name);
