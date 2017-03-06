@@ -24,7 +24,7 @@ namespace Slalom.Stacks.CodeAnalysis
     {
         public sealed override ImmutableArray<string> FixableDiagnosticIds
         {
-            get { return ImmutableArray.Create(StacksAnalyzer.CommandsEndWithCommand.Id, StacksAnalyzer.EventsEndWithEvents.Id, StacksAnalyzer.MessagePropertiesAreImmutable.Id, StacksAnalyzer.UseCaseShouldHaveRules.Id); }
+            get { return ImmutableArray.Create(StacksAnalyzer.CommandsEndWithCommand.Id, StacksAnalyzer.EventsEndWithEvent.Id, StacksAnalyzer.MessagePropertiesMustBeImmutable.Id, StacksAnalyzer.UseCaseShouldHaveRules.Id); }
         }
 
         public sealed override FixAllProvider GetFixAllProvider()
@@ -54,7 +54,7 @@ namespace Slalom.Stacks.CodeAnalysis
                         equivalenceKey: "Append 'Command'"),
                     diagnostic);
             }
-            else if (diagnostic.Id == StacksAnalyzer.EventsEndWithEvents.Id)
+            else if (diagnostic.Id == StacksAnalyzer.EventsEndWithEvent.Id)
             {
                 var diagnosticSpan = diagnostic.Location.SourceSpan;
 
@@ -69,7 +69,7 @@ namespace Slalom.Stacks.CodeAnalysis
                         equivalenceKey: "Append 'Event'"),
                     diagnostic);
             }
-            else if (diagnostic.Id == StacksAnalyzer.MessagePropertiesAreImmutable.Id)
+            else if (diagnostic.Id == StacksAnalyzer.MessagePropertiesMustBeImmutable.Id)
             {
                 var diagnosticSpan = diagnostic.Location.SourceSpan;
 
